@@ -1,0 +1,33 @@
+name: FlameWill sticky disk
+description: A directory whose contents stay between jobs, by key, on FlameWill runners. Elsewhere it is an empty directory.
+author: FlameWill
+branding:
+  icon: hard-drive
+  color: orange
+
+# On a FlameWill runner the directory is a disk restored from the last save of this key in the same repository, and saved back when
+# the job ends if the job may write the repository's caches (a push, schedule or manual run of the default branch, or of a branch
+# FlameWill names for the repository). Elsewhere the directory is created empty and nothing is kept.
+inputs:
+  key:
+    description: The disk's name in this repository (letters, digits, . _ -, at most 60).
+    required: true
+  path:
+    description: Where to mount it, absolute or relative to the workspace. It must be empty or not exist yet.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Sticky disk
+      shell: bash
+      env:
+        STICKY_KEY: ${{ inputs.key }}
+        STICKY_PATH: ${{ inputs.path }}
+      run: |
+        if command -v fw-sticky-disk >/dev/null 2>&1; then
+          fw-sticky-disk "$STICKY_KEY" "$STICKY_PATH"
+        else
+          case "$STICKY_PATH" in /*) mkdir -p "$STICKY_PATH" ;; *) mkdir -p "$GITHUB_WORKSPACE/$STICKY_PATH" ;; esac
+          echo "Sticky disk: not on a FlameWill runner, $STICKY_PATH is an empty directory"
+        fi
